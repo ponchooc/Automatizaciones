@@ -1,0 +1,184 @@
+DOCUMENTACION COMPLETA DEL SCRIPT automatizador_ordcompra.py
+
+1) PROPOSITO GENERAL
+Este script automatiza el match de ordenes de compra entre GNX y WMS Oracle Cloud.
+Procesa dos archivos de entrada, normaliza datos de bodega, valida en API por facility, reintenta por fases, ejecuta reproceso remoto cuando hay pendientes y cierra con reportes y correo.
+
+2) ALCANCE FUNCIONAL
+- Entrada dual: OC_val_N.txt y OC_val_I.txt.
+- Validacion principal en endpoint ib_shipment.
+- Regla operativa central: consulta separada por bodega.
+- Recuperacion robusta en reinicios del mismo dia.
+
+3) SISTEMAS INTEGRADOS
+- GNX por FTP para bajar insumos y subir archivos de reproceso.
+- GNX por SSH para ejecutar automatizador_ordenes_compra.sh.
+- WMS API para validar shipment_nbr por bodega.
+- Outlook COM para correo ejecutivo de cierre.
+
+4) ARCHIVOS CLAVE
+- archivo_log: log_oc_ddmmyyyy.txt
+- entradas: OC_val_N.txt y OC_val_I.txt
+- control: control_oc_ddmmyyyy.json
+- salida excel: reporte_oc_ddmmyyyy.xlsx
+- salida operativa txt: oc_procesado_ddmmyyyy.txt
+- salida errores: errores_oc_ddmmyyyy.txt
+
+5) CREDENCIALES
+obtener_credenciales
+- Lee .acceso_wms y .acceso_gnx.
+- Si falta cualquiera, el flujo se bloquea.
+- Se cargan variables globales para API y GNX.
+
+6) FASE 0 ABASTECIMIENTO
+fase_cero_ftp
+- Conecta a GNX FTP en ruta ORACLE.
+- Busca ambos archivos de entrada OC.
+- Valida fecha remota de cada archivo con MDTM.
+- Descarga solo archivos vigentes del dia.
+- Regla de retorno: True si descarga al menos uno.
+
+7) PREPARACION DE INSUMO
+ejecutar_verificacion
+- Lee ambos archivos existentes.
+- Parsea linea por linea y elimina sufijo .0 en campos numericos.
+- Deriva bodega desde facility code:
+  - 840 -> CIG
+  - 870 -> VAL
+  - 850 -> 110403
+- Guarda datos en mapa maestro por orden.
+- Detecta duplicados de origen y los informa.
+- Renombra insumos a version historica del dia tras carga en memoria.
+
+8) ESTADO TECNICO Y CACHE
+cargar_estado
+- Construye snapshot diario desde control_oc_ddmmyyyy.json.
+- Mantiene ultimo estado por orden.
+
+cargar_historial_ayer
+- Carga validaciones positivas del dia anterior.
+- Permite resolver ordenes sin nueva consulta API.
+
+9) ESCRITURA ASINCRONA
+hilo_guardado_continuo
+- Consume cola de resultados.
+- Escribe en control NDJSON y txt operativo.
+- Usa lock global para evitar mezcla de escritura.
+
+10) API Y MODELO DE CONSULTA
+consultar_lotes_ordenes
+- Entrada: lista (orden, sales, bodega).
+- Parametros de consulta:
+  - facility_id__code (bodega)
+  - company_id__code = GPOSAN
+  - shipment_nbr__in
+  - fields shipment_nbr,status_id
+  - page_size 100
+- Salida estandar por orden:
+  - OK VERIFICADO API
+  - NO MAL ERROR
+
+11) DIFERENCIAL DEL SCRIPT OC
+Este script agrupa por bodega en fase 1 y en fases de revalidacion.
+No mezcla ordenes de diferentes facilities en el mismo lote.
+Esto mantiene coherencia con la semantica del endpoint ib_shipment.
+
+12) REENTRADA CORTA
+verificar_reentrada
+- Revalida hasta 3 registros recientes no cacheados.
+- Actualiza estados que cambian en reintentos.
+
+13) FASE 1 VALIDACION MASIVA
+Dentro de ejecutar_verificacion
+- Separa pendientes del dia vs cache historica.
+- Construye lotes por bodega de 100 registros.
+- Session con Retry y adapter HTTP.
+- ThreadPool de 5 workers para paralelismo.
+- Persistencia inmediata via cola de resultados.
+
+14) FASE 2 REVALIDACION
+procesar_lote_errores
+- Toma solo remanentes con NO MAL ERROR.
+- Reagrupa por bodega.
+- Reconsulta lotes de 100.
+- Regenera estado consolidado y reporte de fase.
+
+15) REPROCESO GNX
+subir_ftp_y_ejecutar_ssh
+- Crea i04.txt con incidencias.
+- Crea copia local i04_ddmmyyyy.txt.
+- Sube i04.txt por FTP modo binario a /respaldo_migracion/reportes_gnx.
+- Inicia SSH e invoca automatizador_ordenes_compra.sh.
+- Devuelve exito o fallo para decidir flujo posterior.
+
+16) FASE 3 Y FASE 4
+esperar_y_revalidar
+- Recibe minutos de espera y fase actual.
+- Usa checkpoint .faseN_iniciada_oc_ddmmyyyy.
+- Si ya existe checkpoint, evita repetir espera.
+- Reconsulta remanentes por bodega en lotes de 100.
+- Calcula recuperadas y fallidas.
+- Genera reporte de fase.
+
+17) REPORTE
+generar_reporte_final
+- Exporta excel con columnas priorizadas.
+- Escribe bloque de errores por fase en txt.
+- Aplica verificacion dual conteo memoria vs lineas en reporte.
+- Si coincide, agrega sello cronologico de finalizacion.
+
+18) CORREO
+enviar_correo
+- Semaforo de idempotencia: .correo_enviado_oc_ddmmyyyy.
+- Lee destinatarios desde destinatarios.txt.
+- Genera HTML con resumen:
+  - total GNX
+  - total memoria
+  - total validadas hoy
+  - total pendientes
+- Incluye tabla de pendientes con mapeo visual de SIL.
+- Adjunta log diario.
+- Reintenta 3 veces ante fallo.
+
+19) LOGICA DE CIERRE UNIFICADA
+Dentro de ejecutar_verificacion hay funcion interna despachar_correo.
+Esta funcion siempre recalcula:
+- memoria_hoy
+- trabajo_hoy
+- remanentes_hoy
+- validados_hoy
+Asi se evita desalineacion entre ramas de salida.
+
+20) ORQUESTACION EN MAIN
+Ruta normal
+- Si hay archivos de entrada, ejecuta verificacion completa.
+
+Ruta recuperacion
+- Si no hay entrada, usa estado previo y semaforos.
+- Casos:
+  1) hay datos pero no hay semaforo de correo -> reenviar notificacion.
+  2) hay remanentes y ya hubo SSH -> reanudar fase 3/4.
+  3) hay remanentes y no hubo SSH -> ejecutar SSH y continuar fase 3/4.
+  4) sin remanentes -> proceso ya completado.
+
+21) CONTROLES DE RESILIENCIA
+- control_oc_ddmmyyyy.json como fuente de verdad incremental.
+- checkpoints por fase para no repetir sleeps.
+- semaforo ssh diario .chk_ssh_oc_ddmmyyyy.
+- semaforo correo diario .correo_enviado_oc_ddmmyyyy.
+- retries API y retries de correo.
+
+22) TRAZABILIDAD OPERATIVA
+Cada etapa imprime encabezados de fase y contadores.
+El log final captura:
+- decisiones de ruta
+- lotes procesados
+- remanentes por fase
+- resultado de reproceso remoto
+- resultado de envio de correo
+
+23) RESUMEN FINAL DEL COMPORTAMIENTO
+automatizador_ordcompra.py esta orientado a consistencia por bodega.
+Su diferencia principal respecto a otros scripts es el agrupamiento facility based.
+Esa estrategia se mantiene en validacion inicial y revalidaciones.
+El resultado es un pipeline diario con recuperacion fuerte y salida ejecutiva para operacion.

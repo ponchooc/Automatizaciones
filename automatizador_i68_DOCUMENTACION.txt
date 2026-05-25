@@ -1,0 +1,180 @@
+DOCUMENTACION COMPLETA DEL SCRIPT automatizador_i68.py
+
+1) PROPOSITO GENERAL
+Este script automatiza la validacion diaria de pedidos i68 entre GNX, WMS Oracle Cloud y OTM Oracle Transportation.
+Procesa un archivo de entrada, valida ordenes contra APIs, ejecuta reprocesos remotos cuando hay pendientes, realiza revalidaciones escalonadas y cierra con reporte Excel y correo Outlook.
+
+2) ALCANCE FUNCIONAL
+- Entrada principal: cliyclitie.txt.
+- Validacion principal en endpoint WMS order_hdr y OTM orderReleases.
+- Recuperacion robusta en reinicios del mismo dia.
+- Reproceso remoto GNX via FTP y SSH cuando la validacion API falla.
+- Reportes de errores y seguimiento por fases.
+
+3) SISTEMAS INTEGRADOS
+- GNX FTP para descarga de insumo y carga de reprocesos.
+- GNX SSH para ejecutar script remoto `reprocesai68.sh`.
+- WMS Oracle Cloud REST API para comprobar `order_nbr`.
+- OTM Oracle Transportation REST API para comprobar `orderReleaseXid`.
+- Outlook COM para envio de correo HTML de cierre.
+
+4) ARCHIVOS CLAVE
+- archivo_log: log_<ddmmyyyy>.txt
+- entrada: cliyclitie.txt
+- control: control_i68_<ddmmyyyy>.json
+- txt operativo: cliyclitie_procesado_<ddmmyyyy>.txt
+- salida excel: reporte_ordenes_sears_<ddmmyyyy>.xlsx
+- errores: errores_<ddmmyyyy>.txt
+- checkpoints: .fase3_iniciada_i68_<ddmmyyyy>, .fase4_iniciada_i68_<ddmmyyyy>, .correo_enviado_i68_<ddmmyyyy>, .chk_ssh_i68
+
+5) CREDENCIALES
+obtener_credenciales
+- Lee .acceso_wms, .acceso_otm y .acceso_gnx.
+- Carga globales para WMS, OTM y GNX.
+- Devuelve True solo si todas las credenciales estan presentes.
+
+6) FASE 0 FTP
+fase_cero_ftp
+- Conecta a GNX FTP en `/gnx_prod/manto/desa/trabajo/sears/ORACLE`.
+- Busca `cliyclitie.txt`.
+- Valida fecha remota via MDTM y descarga solo si es del dia actual.
+- Retorna True si la descarga fue exitosa.
+
+7) FLUJO PRINCIPAL DE VERIFICACION
+ejecutar_verificacion
+- Lee `cliyclitie.txt` y parsea lineas con separador `|`.
+- Extrae `orden` y `sales_check`, y captura opcional `bodega` si existe una tercera columna.
+- Renombra el archivo de entrada a `cliyclitie_<ddmmyyyy>.txt` despues de cargarlo.
+- Construye un mapa maestro de ordenes y detecta duplicados indirectamente por clave.
+
+8) ESTADO DIARIO Y CACHE HISTORICA
+cargar_estado
+- Lee `control_i68_<ddmmyyyy>.json` linea por linea.
+- Conserva el ultimo registro por `orden_buscada`.
+- Normaliza ordenes de 11 digitos anteponiendo `0`.
+
+cargar_historial_ayer
+- Lee `control_i68_<ayer>.json`.
+- Conserva ordenes con `OK VERIFICADO API` o `YA VALIDADA ANTES`.
+- Permite reutilizar validaciones previas del dia anterior.
+- Normaliza ordenes de 11 digitos a 12 digitos cuando aplica.
+
+9) ESCRITURA ASINCRONA
+hilo_guardado_continuo
+- Consume resultados de `cola_resultados`.
+- Escribe cada item en `control_i68_<ddmmyyyy>.json` y `cliyclitie_procesado_<ddmmyyyy>.txt`.
+- Usa lock para sincronizar accesos a disco.
+
+10) VALIDACION DE LOTES
+consultar_lotes_ordenes
+- Toma lista de tuples `(orden, sales)`.
+- Consulta WMS con `order_nbr__in` y pagina 100.
+- Consulta OTM con query `orderReleaseXid eq "orden" or ...`.
+- Asigna `OK VERIFICADO API` solo si ambas APIs encuentran la orden.
+- Cuando falta WMS u OTM registra motivo explicito en `resultado`.
+- En caso de error OTM marca `otm_error` y fuerza `NO MAL ERROR`.
+
+11) REENTRADA DE RESULTADOS
+verificar_reentrada
+- Revalida hasta 3 resultados recientes que no sean `YA VALIDADA ANTES`.
+- Actualiza el estado si cambia la etiqueta.
+- Se ejecuta antes de iniciar la validacion masiva en fase 1.
+
+12) FASE 1 VALIDACION MASIVA
+Dentro de ejecutar_verificacion
+- Separa pendientes no procesados hoy.
+- Recupera ordenes ya validadas de cache historica directamente sin consultar APIs.
+- Construye lotes de 100 ordenes.
+- Usa `ThreadPoolExecutor` con 5 workers para paralelizar consultas WMS/OTM.
+- Persiste resultados en segundo plano con `hilo_guardado_continuo`.
+- Calcula `total_hoy` como las ordenes que realmente fueron a la API, excluyendo cache.
+
+13) REPORTE Y CORREO DE FASE 1
+- Genera reporte Excel y actualiza estado usando `generar_reporte_final`.
+- Luego ejecuta fase 2 de revalidacion.
+- Envía correo al final del flujo o tras el reproceso remoto si hay pendientes.
+
+14) FASE 2 REVALIDACION LOCAL
+procesar_lote_errores
+- Toma registros con `etiqueta_final` = `NO MAL ERROR`.
+- En fase 2 aplica regla: si la orden tiene 11 digitos, antepone `0`.
+- Revalida en lotes de 100 contra las APIs.
+- Regenera reporte de fase y retorna remanentes.
+
+15) PROTOCOLO GNX REMOTO
+subir_ftp_y_ejecutar_ssh
+- Genera `cargai15.unl` con `sales_check` unicos de los errores pendientes.
+- Sube el archivo a GNX FTP en `/gnx_prod/manto/desa/trabajo/sears/carlos_ortega`.
+- Archiva localmente como `cargai15_<ddmmyyyy>.unl`.
+- Se conecta por SSH y ejecuta `./reprocesai68.sh`.
+- Usa shell interactiva y espera varios segundos para asegurar la terminacion.
+- Retorna True solo si la transferencia y el reproceso remoto se completan.
+
+16) FASE 3 POST-REPROCESO
+esperar_y_revalidar(sesion, sesion_otm, fase_actual, errores_pendientes, minutos)
+- Crea checkpoint `.fase{fase}_iniciada_i68_<ddmmyyyy>` para evitar repetir esperas.
+- Si el checkpoint ya existe, omite el sleep y procede directo.
+- Espera el tiempo configurado antes de revalidar.
+- Convierte ordenes de 11 digitos a 12 en fases >= 2.
+- Revalida lotes de 100.
+- Genera reporte final de fase y devuelve remanentes.
+
+17) FASE 4 REVISION FINAL
+- Si la fase 3 deja remanentes, se ejecuta fase 4 con mayor espera.
+- El mismo metodo `esperar_y_revalidar` aplica para la revision definitiva.
+- Si persisten errores tras fase 4, se notifica y cierra el proceso.
+
+18) REPORTE FINAL
+generar_reporte_final
+- Exporta `reporte_ordenes_sears_<ddmmyyyy>.xlsx` con columnas ordenadas.
+- Renombra columnas para legibilidad.
+- Escribe bloque de errores en `errores_<ddmmyyyy>.txt` por fase.
+- Compara conteos del maestro con lineas escritas.
+- Si coincide, añade sello de finalizacion en los archivos de salida.
+
+19) ENVIO DE CORREO
+enviar_correo
+- Evita reenvio con semaforo `.correo_enviado_i68_<ddmmyyyy>`.
+- Lee destinatarios de `destinatarios.txt`.
+- Genera correo HTML sofisticado con:
+  - resumen ejecutivo
+  - desglose de fallas por sistema
+  - tabla de pendientes si existen
+- Adjunta el log diario y envia via Outlook.
+- Reintenta hasta 3 veces ante fallos.
+
+20) ORQUESTACION EN MAIN
+- Si faltan credenciales, termina con error.
+- Si falta el archivo de entrada, intenta `fase_cero_ftp()`.
+- Si existe `cliyclitie.txt`, ejecuta `ejecutar_verificacion()` completo.
+- Si no existe el archivo de entrada, entra en modo recuperacion usando el control del dia.
+
+21) RECUPERACION DIARIA
+- Si existe control del dia y no se envio correo, reintenta el envio.
+- Si hay remanentes y `.chk_ssh_i68` existe, reanuda fases 3 y 4.
+- Si hay remanentes y no existe `.chk_ssh_i68`, ejecuta reproceso GNX y luego fases 3/4.
+- Si no hay pendientes, informa que el proceso ya estaba completado.
+
+22) REGLAS DE NEGOCIO Y CASOS ESPECIALES
+- Las ordenes de 11 digitos pueden transformarse a 12 con un `0` inicial en fases posteriores.
+- `OK VERIFICADO API` es el unico estado exitoso definitivo.
+- Cualquier otra condicion se clasifica como `NO MAL ERROR`.
+- Cuando WMS responde pero OTM no, el registro se conserva con datos WMS y motivo explicito.
+- Cuando OTM responde pero WMS no, el registro conserva referencia OTM y marca ausencia en WMS.
+
+23) RESILIENCIA Y CONTINUIDAD
+- `control_i68_<ddmmyyyy>.json` es la fuente de verdad incremental.
+- Checkpoints en disco evitan re-ejecutar esperas.
+- Semaforos de correo y SSH impiden duplicar reprocesos o notificaciones.
+- El proceso puede ser relanzado varias veces el mismo dia sin perder trazabilidad.
+
+24) SALIDAS DE AUDITORIA
+- Log completo con todos los mensajes impresos.
+- Excel de reporte con estado consolidado.
+- Texto procesado con linea por orden y estado.
+- Archivo de errores con detalle de cada pendencia.
+- Correo HTML final de notificacion.
+
+25) RESUMEN FINAL
+automatizador_i68.py es un proceso diario de matching entre GNX, WMS y OTM con reintentos escalonados y reproceso remoto.
+Su diseño enfatiza resiliencia operativa, recuperacion de ejecuciones interrumpidas y evidencia de cierre mediante reportes y correo.

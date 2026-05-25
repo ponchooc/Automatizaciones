@@ -1,0 +1,215 @@
+DOCUMENTACION COMPLETA DEL SCRIPT petota_gnx.py
+
+1) PROPOSITO GENERAL
+Este script procesa el reporte Petota con integracion a WMS Oracle Cloud.
+Descarga un archivo comprimido desde GNX FTP, lo descomprime, consulta inventario WMS por SKU, genera mappings de sales check a order release, consulta order_hdr y genera un Excel final con existencia y estatus.
+Adicionalmente opcionalmente envia el archivo comprimido por correo via SSH remoto.
+
+2) ENFOQUE OPERATIVO
+- Flujo diario orientado a procesamiento incremental y reintentos.
+- Control de fases con checkpoint y json de control para evitar trabajo duplicado.
+- Modo especial para solo envio de correo cuando el proceso principal ya se completo.
+- Resiliencia ante fallas de lectura CSV, tiempos agotados y reinicios.
+
+3) SISTEMAS INTEGRADOS
+- FTP GNX para descarga de `scns_petota_anx.csv.gz` y subida de `relices.txt`.
+- GNX SSH para ejecutar el proceso remoto `relizador.sh` y enviar correo remota con `enviador_correos.sh`.
+- WMS Oracle Cloud REST API para consulta de inventario (`custom_inventory_summary`) y estatus de pedidos (`order_hdr`).
+- Correo remoto por SSH al servidor GNX, no correo directivo local.
+
+4) ARCHIVOS CLAVE
+- `.acceso_gnx`: credenciales GNX para FTP/SSH.
+- `.acceso_wms`: credenciales WMS API.
+- `run_<ddmmyyyy>/scns_petota_anx.csv.gz`: archivo comprimido descargado.
+- `run_<ddmmyyyy>/scns_petota.csv`: archivo CSV descomprimido.
+- `run_<ddmmyyyy>/relices.txt`: input de sales check normalizados.
+- `run_<ddmmyyyy>/relices_procesado.txt`: output remoto procesado de GNX.
+- `run_<ddmmyyyy>/Petota_con_Existencia_WMS.xlsx`: Excel final.
+- `run_<ddmmyyyy>/log_<ddmmyyyy>.txt`: log de ejecucion.
+- `run_<ddmmyyyy>/control_<ddmmyyyy>.json`: estado de control de fases.
+- Checkpoints ocultos: `.ckpt_<nombre>_<ddmmyyyy>.ok`.
+
+5) CREDENCIALES
+cargar_credenciales
+- Lee JSON desde `.acceso_gnx` para GNX y `.acceso_wms` para WMS.
+- Valida que existan `usuario` y `contrasena`.
+- Arroja excepcion si el archivo no existe o las credenciales son invalidas.
+
+6) CONFIGURACION DE EJECUCION
+- `RUN_DIR` construye un directorio `run_<ddmmyyyy>` con la fecha actual.
+- `ARCHIVO_LOCAL_GZ`, `ARCHIVO_LOCAL_CSV`, `ARCHIVO_RELICES`, `ARCHIVO_RELICES_PROCESADO`, `ARCHIVO_SALIDA` resuelven rutas dentro de `RUN_DIR`.
+- `ENVIAR_CORREO_ACTIVO` controla si se realiza el envio final por correo.
+- `SOLO_ENVIO_CORREO` permite ejecutar solo la fase de envio de correo si el Excel ya existe.
+- `SSH_RETRY_ACTIVO` y `SSH_RETRY_MAX_INTENTOS` gestionan reintentos de SSH.
+
+7) UTILIDADES DE LOG Y CONTROL
+- `Logger` escribe mensajes de log en `run_<ddmmyyyy>/log_<ddmmyyyy>.txt`.
+- `Control` guarda un JSON con el estado de fases y resultados por SKU.
+- La implementacion fallback crea `log_control.py` si no existe.
+- `phase_header` y `log_console` imprimen mensajes formateados y duplican salida en consola y archivo.
+
+8) MANEJO DE CHECKPOINTS
+- `hidden_checkpoint_name` devuelve ruta para checkpoints ocultos.
+- `write_hidden_checkpoint` crea un archivo de checkpoint con contenido "ok".
+- `exists_hidden_checkpoint` verifica su existencia.
+- Se usan para fases FTP/SSH, descargas y envio de correo.
+
+9) DESCARGA FTP
+ftp_descargar
+- Conecta a `FTP_HOST` usando credenciales GNX.
+- Cambia a directorio remoto dado.
+- Busca el archivo remoto con `nlst`.
+- Descarga binariamente en chunks y registra bytes recibidos cada segundo.
+- Cierra conexion al finalizar.
+
+10) SUBIDA FTP
+ftp_subir
+- Conecta a `FTP_HOST` y cambia al directorio remoto objetivo.
+- Sube archivo local con `storbinary` y callback que registra bytes enviados.
+- Cierra conexion de forma ordenada.
+
+11) DESCOMPRESION
+- `descomprimir_gz` abre el archivo gz y copia su contenido a `scns_petota.csv`.
+- Registra la operacion en log.
+
+12) LECTURA CSV
+leer_csv
+- Intenta leer `scns_petota.csv` con codificaciones `utf-8` y `latin1`.
+- Prueba separadores `	` y `,`.
+- Si detecta filas corruptas, reintenta con `engine='python'` y `on_bad_lines='skip'`.
+- Arroja error si no puede leer el archivo.
+
+13) CONSULTA INVENTARIO WMS
+consultar_item_wms
+- Normaliza `sku` a `SRS{sku}`.
+- Consulta `custom_inventory_summary` con `facility_id__code=VAL`, `company_id__code=GPOSAN`.
+- Interpreta la respuesta de texto como lineas `|`.
+- Calcula existencia como `active_available + iblpn_total - iblpn_lockcode`.
+- Retorna `NO ENCONTRADO`, `TIEMPO AGOTADO` o `ERROR API <code>`.
+
+14) NORMALIZACION DE SALES CHECK
+normalize_sales_check
+- Elimina caracteres no digitos.
+- Si quedan mas de 16 digitos, toma los ultimos 16.
+- Rellena con ceros a la izquierda hasta 16 digitos.
+
+strip_leading_zero
+- Elimina ceros a la izquierda de una cadena y retorna "0" si queda vacia.
+
+15) GENERACION DE RELICES
+crear_relices_txt
+- Toma la columna `sales check` del DataFrame.
+- Normaliza y desduplica valores.
+- Escribe `relices.txt` con un sales check por linea.
+- Verifica que el archivo resultante tenga la misma cantidad de registros unicos.
+
+16) SSH INTERACTIVO GNX
+ssh_send_char_by_char, ssh_drain_output, ssh_send_and_log
+- Envia comandos char por char para compatibilidad de terminales.
+- Lee salida del shell con polling y escribe log en tiempo real.
+- `ssh_drain_output` recolecta stdout hasta timeout.
+
+17) RETRY GENERAL DE SSH
+ejecutar_con_retry_ssh
+- Ejecuta una accion con hasta `max_intentos` reintentos.
+- Espera segundos definidos en `SSH_RETRY_ESPERAS_SEG` entre intentos.
+- Levanta error si todos los intentos fallan.
+
+18) EJECUCION DEL MENU GNX
+_ejecutar_menu_gnx_once / ejecutar_menu_gnx
+- Conecta SSH a GNX y abre shell interactivo.
+- Navega con secuencia: `1`, `1`, `cd <FTP_DIR_RELICES>`, `./relizador.sh`.
+- Monitorea salida de `relizador.sh` durante aproximadamente 30 segundos.
+- Finaliza con `exit` y `f`.
+- `ejecutar_menu_gnx` aplica reintentos si estan habilitados.
+
+19) ESPERA Y DESCARGA DE REPLIES_PROCESADO
+esperar_y_descargar_relices_procesado
+- Reintenta descargar `relices_procesado.txt` desde GNX hasta 30 minutos.
+- Usa espera de 30 segundos entre intentos.
+- Retorna True si el archivo se obtiene, False si agota tiempo.
+
+20) PARSEO DE REPLIES_PROCESADO
+parsear_relices_procesado
+- Lee `relices_procesado.txt`.
+- Soporta separadores `|`, tab o coma, o linea unica.
+- Mapea `sales check` normalizado a `order_release`.
+- Retorna diccionario `sales -> order release`.
+
+21) CONSULTA ORDER_HDR
+consultar_order_status_lote
+- Consulta `order_hdr` con `facility_id__code=VAL`, `company_id__code=GPOSAN`.
+- Retorna un mapa `order_nbr -> estatus`.
+- Interpreta HTTP 404 como `SIN ENVIO A WMS`.
+- Mapea `status_id` a texto usando `STATUS_MAP`.
+- En caso de timeout retorna lista de pedidos con `TIEMPO AGOTADO`.
+
+consultar_order_status_unitario
+- Consulta order_hdr para un solo `order_nbr`.
+- Usa el mismo mapping de estatus.
+
+22) ESCRITURA EXCEL
+guardar_excel
+- Limpia caracteres invalidos en columnas de texto.
+- Convierte campos numericos especificos a `int64`.
+- Usa `openpyxl` para guardar y ajustar ancho de columnas.
+- Formatea columnas numericas como enteros en el archivo de salida.
+
+23) ENVIO DE CORREO POR SSH REMOTO
+_ejecutar_enviador_correos_ssh_once / ejecutar_enviador_correos_ssh
+- Conecta SSH a GNX, navega a `FTP_DIR_SOLO_PETOTA`.
+- Comprime el Excel con `zip -j` en el servidor remoto.
+- Ejecuta `./enviador_correos.sh` con destinatarios, asunto, cuerpo y archivo ZIP.
+- Limpia archivos remotos con `rm -f`.
+- Cierra la sesion SSH.
+- En modo conservador no reintenta mas de una vez para evitar duplicados.
+
+24) FASE OPCIONAL DE ENVIO DE CORREO
+ejecutar_fase_envio_correo
+- Controla la fase de correo con banderas en `Control` y checkpoints ocultos.
+- Paso 1: subir Excel via FTP al directorio `FTP_DIR_SOLO_PETOTA`.
+- Paso 2: ejecutar SSH remoto para comprimir, enviar y limpiar.
+- Marca completadas las etapas en el JSON de control.
+- Omite la fase si ya se completo hoy.
+
+25) ORQUESTACION PRINCIPAL
+main
+- Crea `RUN_DIR` y las instancias de `Logger` y `Control`.
+- Limpia claves temporales heredadas del control.
+- Si `SOLO_ENVIO_CORREO=True`, salta toda la logica principal y envia correo solo.
+- Verifica si ya se genero el Excel hoy y decide omitir fases duplicadas.
+- Descarga el archivo gz si no se ha descargado hoy.
+- Descomprime el archivo gz si no se ha descomprimido hoy.
+- Lee CSV y valida columnas `int_art` y `sales check`.
+- Consulta inventario WMS por `int_art` en lotes de 100 y registra resultados en `Control`.
+- Reintenta SKUs con timeout despues de pausas.
+- Inserta columna `Existencia WMS` al DataFrame.
+- Genera `relices.txt` y lo sube por FTP.
+- Ejecuta SSH remoto para generar `relices_procesado.txt`.
+- Descarga el resultado procesado y parsea el mapeo de `sales -> order_release`.
+- Consulta `order_hdr` para todos los order releases validos y maneja reintentos escalonados.
+- Inserta columnas `Ultima orden` y `Estatus WMS` en el Excel final.
+- Guarda el Excel y marca la fase completada.
+- Ejecuta la fase opcional de envio de correo.
+
+26) CONTROL DE FASES Y REINICIO
+- `Control.data` persiste el progreso de las fases y los resultados por SKU y orden.
+- Se usan campos `_descargado_fecha`, `_descomprimido_fecha`, `_inventario_phase_done`, `_relices_phase_done`, `_order_phase_done`, `_excel_phase_done`, y otros.
+- El script es capaz de relanzarse en el mismo dia y retomar desde la ultima fase completada.
+
+27) RESILIENCIA ANTE ERRORES
+- Reintentos FTP y SSH configurables.
+- Lectura CSV tolerante a filas corruptas.
+- Retries de WMS para pedidos con `TIEMPO AGOTADO`.
+- Checkpoints y control JSON para evitar repetir pasos.
+
+28) SALIDAS DE AUDITORIA
+- `log_<ddmmyyyy>.txt` con trazabilidad de cada paso.
+- `control_<ddmmyyyy>.json` con estado de fases y resultados.
+- `relices.txt` y `relices_procesado.txt` para el flujo de GNX.
+- Excel final `Petota_con_Existencia_WMS.xlsx` con datos enriquecidos.
+- Checkpoints ocultos para fases FTP/SSH y envio de correo.
+
+29) RESUMEN FINAL
+petota_gnx.py implementa un pipeline diario completo para procesar reporte Petota, enriquecerlo con informacion WMS y order_hdr, y opcionalmente enviar el resultado por correo via GNX.
+Su arquitectura combina descarga FTP, transformacion local, consultas API, control incremental y operacion remota SSH.
