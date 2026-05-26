@@ -3,11 +3,13 @@ Python 3.12.x
 *********
 
 Librerias requeridas :
-requests
-pandas
-paramiko
-pywin32
-openpyxl
+openpyxl                  3.1.5
+pandas                    3.0.0
+paramiko                  4.0.0
+pywin32                   311
+pywin32-ctypes            0.2.3
+requests                  2.32.5
+requests-cache            1.3.0
 *********
 
 Modulos que ya vienen incluidos en la instalacion
