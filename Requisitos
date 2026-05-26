@@ -1,0 +1,31 @@
+Version de Python Requerida:
+Python 3.12.x
+*********
+
+Librerias requeridas :
+requests
+pandas
+paramiko
+pywin32
+openpyxl
+*********
+
+Modulos que ya vienen incluidos en la instalacion
+Modulo	Usado en
+os	                  los 4 archivos
+json  	              los 4 archivos
+sys	                  i68, ordcompra, transfere
+time	                los 4 archivos
+threading	            los 4 archivos
+queue	                i68, ordcompra, transfere
+ftplib	              los 4 archivos
+datetime / timedelta	los 4 archivos
+concurrent.futures	  los 4 archivos
+re	                  petota_gnx
+gzip	                petota_gnx
+shutil	              petota_gnx (y ordcompra internamente)
+importlib.util	      petota_gnx
+***********
+
+Comando para instalar las librerias
+pip install requests pandas paramiko pywin32 openpyxl
