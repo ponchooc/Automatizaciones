@@ -1,0 +1,30 @@
+®Carlos Alfonso Ortega Molina®
+
+
+1 proposito general
+este script realiza la validacion y depuracion de movimientos de ventas reportados como sin puntos de venta o no spots
+identifica folios inconsistentes que no coinciden con las tarifas o politicas comerciales de genesix y genera reportes planos de inconsistencias
+
+2 variables y constantes principales
+ruta_trabajo linea 12 define la ruta de integracion del usuario /gnx_prod/manto/desa/trabajo/sears/carlos_ortega
+archivo_val linea 15 archivo de validacion principal /GPOSAN_VAL_NO_SPOTS.csv
+archivo_proc linea 16 archivo ya procesado /GPOSAN_VAL_NO_SPOTS._PROCESADO.csv
+
+3 rutas y archivos clave
+ruta de trabajo /gnx_prod/manto/desa/trabajo/sears/carlos_ortega y /gnx_prod/manto/desa/trabajo/sears/mangel/integridad
+archivos temporales /bts_salida_temp.txt /inconsistencias_temp.txt /sales_checks_temp.txt
+archivo original /GPOSAN_VAL_NO_SPOTS.csv y su archivo resultante de procesamiento /GPOSAN_VAL_NO_SPOTS._PROCESADO.csv
+
+4 tablas de base de datos consultadas
+tarifas tabla de tarifas comerciales en informix
+puntos tabla de control de puntos de venta de genesix
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 12 cabecera del script definicion de variables de entorno de base de datos informix path de ejecucion en aix 72
+lineas 14 a 30 validacion de existencia del archivo csv GPOSAN_VAL_NO_SPOTS en la ruta de trabajo especificada
+lineas 32 a 60 procesamiento del archivo csv linea por linea usando bucles while y cut para separar columnas de folios sku cantidades y precios de venta
+lineas 62 a 85 consultas dinamicas sql con dbaccess a la tabla tarifas para verificar si el precio reportado coincide con la tarifa vigente en genesix
+lineas 87 a 110 generacion de archivos temporales con errores encontrados guardado de folios procesados en GPOSAN_VAL_NO_SPOTS._PROCESADO.csv y limpieza de archivos de trabajo en aix
+
+®Carlos Alfonso Ortega Molina®

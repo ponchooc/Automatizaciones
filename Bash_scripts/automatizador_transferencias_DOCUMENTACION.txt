@@ -1,0 +1,31 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script realiza la automatizacion completa de la recepcion de transferencias entre tiendas y centros de distribucion
+procesa los archivos de interfaz entrantes valida bultos y articulos y corre los procesos de actualizacion de inventarios en genesix de forma desatendida
+
+2 variables y constantes principales
+ruta_ot linea 10 define la ruta de recepcion de transferencias /SE_OT
+ruta_ordentie linea 11 define la ruta de transferencias de tienda /SE_ORDENTIE
+ruta_sql linea 14 define el directorio de scripts de integracion /gnx_prod/sears/sql/ora_integra/
+ruta_reportes linea 17 ruta para almacenamiento de reportes consolidados /respaldo_migracion/reportes_gnx
+
+3 rutas y archivos clave
+directorios de entrada de archivos de transferencias /SE_OT y /SE_ORDENTIE
+directorio de programas e integraciones /gnx_prod/sears/sql/ora_integra/
+directorio de salida de reportes y logs /respaldo_migracion/reportes_gnx
+archivo de reporte consolidado /respaldo_migracion/reportes_gnx/i04.txt
+
+4 tablas de base de datos consultadas
+el script orquesta el procesamiento de datos que se guardan en las tablas de transferencias de genesix como tra_cab tra_det bulto_cab bulto_det en la base de datos informix a través de ejecuciones de scripts sql nativos
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 9 declaracion de cabecera de script comentarios de autor en español y definicion de variables generales de entorno de aix 72
+lineas 10 a 25 configuracion de variables de ruta para las carpetas de entrada de transferencias ot y ordentie
+lineas 27 a 75 bucle que analiza la existencia de archivos nuevos de interfaz en las rutas configuradas validados por tamaño mayor a cero bytes
+lineas 77 a 130 ejecucion de comandos dbaccess utilizando archivos sql temporales y permanentes en /gnx_prod/sears/sql/ora_integra/ para actualizar stock y procesar bultos de transferencia
+lineas 132 a 180 procesamiento de transferencias de tienda ordentie con actualizacion directa en base de datos informix ibm informix dynamic server version 1210fc13
+lineas 182 a 211 generacion del log de errores e informes en i04 txt y movimiento de archivos planos procesados a sus directorios de respaldo historico en aix para evitar sobreescritura
+
+®Carlos Alfonso Ortega Molina®

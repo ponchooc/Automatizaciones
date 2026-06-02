@@ -1,0 +1,29 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script realiza la revision y validacion tecnica de las ordenes de compra oc y transferencias ot cargadas en las carpetas de interfaces de paso
+verifica la integridad de los archivos de datos entrantes comparandolos contra layouts y bitacoras previas guardadas en el servidor aix
+
+2 variables y constantes principales
+ruta_integra linea 12 define la ruta de integracion de oracle /gnx_prod/sears/sql/ora_integra/
+respaldo_migracion linea 15 directorio para respaldos de reportes de genesix /respaldo_migracion/reportes_gnx
+archivo_i04 linea 18 archivo de reporte de errores i04.txt
+
+3 rutas y archivos clave
+directorio de interfaces /SE_OC /SE_ASN_PO /SE_OT /SE_ORDENTIE
+directorio de salida y reportes /respaldo_migracion/reportes_gnx
+archivo de entrada de reportes /respaldo_migracion/reportes_gnx/i04.txt
+carpetas temporales de proceso en aix 72
+
+4 tablas de base de datos consultadas
+este script realiza un analisis y validacion a nivel de sistema de archivos e interfaces de texto plano correspondientes a las ordenes de compra y transferencias antes de su carga directa a la base de datos informix o base de datos oracle cloud por lo que interactua con archivos planos de layouts de tablas como oc_cab oc_det tra_cab tra_det
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 15 definicion del interprete bash del sistema externo aix variables de rutas para respaldos carpetas de interfaces y bitacoras de control
+lineas 18 a 85 funcion principal de lectura de archivos en /SE_OC y /SE_ASN_PO para ordenes de compra verificando que existan y no esten vacios
+lineas 87 a 190 validacion del archivo i04 txt en busca de errores reportados por los procesos automaticos de genesix mapeando codigos de error con explicaciones tecnicas en español
+lineas 192 a 310 procesamiento de transferencias en las rutas /SE_OT y /SE_ORDENTIE validando cabeceras y detalles alineados
+lineas 312 a 410 logica de generacion de reportes consolidados por pantalla con uso de colores ansi para facil visualizacion de errores de interfaz
+lineas 412 a 446 comandos de respaldo de archivos procesados moviendolos a subcarpetas de historico fechadas en el servidor aix 72 para evitar reprocesamiento y doble ejecucion involuntaria
+
+®Carlos Alfonso Ortega Molina®

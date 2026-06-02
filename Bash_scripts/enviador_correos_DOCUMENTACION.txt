@@ -1,0 +1,28 @@
+®Carlos Alfonso Ortega Molina®
+
+
+1 proposito general
+este script funciona como una herramienta de utilidad para el envio automatico de correos electronicos con archivos adjuntos comprimidos en zip
+es invocado por otros procesos de integracion para notificar resultados de conciliaciones u operaciones diarias de la base de datos informix
+
+2 variables y constantes principales
+destinatario linea 12 direccion de correo destino principal
+archivo_adjunto linea 15 ruta completa del archivo zip que se desea enviar por correo /tmp/archivo.zip
+asunto linea 18 texto descriptivo del asunto del correo electronico
+
+3 rutas y archivos clave
+ruta del archivo adjunto comunmente en /tmp/archivo.zip
+programas del sistema de correo mail de aix o sendmail de aix 72
+
+4 tablas de base de datos consultadas
+este script es una utileria de sistema de archivos y comunicaciones de red por lo que no realiza de manera directa consultas sql a tablas de la base de datos informix pero procesa reportes que contienen datos de tablas como devcab i15 tra_cab
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 10 definicion de variables iniciales comentarios de autor y validacion de parametros de entrada en consola de aix
+lineas 12 a 25 asignacion de destinatario asunto del correo y archivo zip adjunto validando previamente que el archivo exista en la ruta especificada de aix 72
+lineas 27 a 45 construccion de la estructura mime multipart utilizando comandos echo y especificando delimitadores de limites de correo electronico
+lineas 47 a 58 codificacion del archivo zip adjunto usando uuencode de aix para insertarlo de forma binaria textualizada dentro del correo mime
+lineas 59 a 67 envio final del bloque de correo mime generado utilizando el comando sendmail t y verificacion del codigo de salida para registrar si el correo fue aceptado de forma exitosa por el agente de transporte local de correo electronico
+
+®Carlos Alfonso Ortega Molina®

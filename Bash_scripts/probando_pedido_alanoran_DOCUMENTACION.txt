@@ -1,0 +1,26 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script sirve para realizar pruebas controladas de validacion de pedidos especificos ingresados en la base de datos informix de genesix por el area de desarrollo o integracion
+consulta el estado de las ordenes e imprime sus detalles en pantalla para depuracion tecnica de transacciones de pedidos
+
+2 variables y constantes principales
+pedido linea 12 numero del pedido u orden de compra a probar o validar en la consulta
+base_datos linea 15 nombre de la base de datos informix utilizada para dbaccess gen
+
+3 rutas y archivos clave
+rutas de utilerias de ejecucion dbaccess de informix en aix 72
+archivos sql temporales generados al vuelo para realizar consultas directas
+
+4 tablas de base de datos consultadas
+orp_cab tabla de cabecera de ordenes de pedido en informix
+orp_det tabla de detalle de ordenes de pedido en informix
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 10 definicion de variables iniciales comentarios de autor y definicion de la base de datos informix
+lineas 12 a 25 captura del numero de pedido ingresado como parametro de entrada o leido de forma interactiva desde la terminal de aix
+lineas 27 a 50 construccion dinamica del script sql temporal que realiza select a orp_cab y orp_det buscando consistencia en piezas precios y estado del pedido
+lineas 52 a 75 ejecucion de la consulta a traves del interprete dbaccess mostrando resultados directamente en consola de aix 72 y remocion segura del archivo sql temporal generado para no dejar basura
+
+®Carlos Alfonso Ortega Molina®

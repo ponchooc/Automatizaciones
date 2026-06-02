@@ -1,0 +1,27 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script realiza el reprocesamiento y validacion de transferencias intertiendas que no se integraron correctamente con oracle cloud wms
+reconstruye layouts planos basandose en las transacciones registradas en informix de genesix y las deposita en directorios de paso
+
+2 variables y constantes principales
+ruta_mesa linea 12 define el directorio de mesa de control /gnx_prod/manto/desa/trabajo/MesaControl
+archivo_repro linea 15 contiene el archivo de reprocesamiento i40_repro.txt
+ruta_respaldo linea 18 ruta de respaldos /respaldo_migracion/reportes_gnx
+
+3 rutas y archivos clave
+directorio de trabajo de mesa de control /gnx_prod/manto/desa/trabajo/MesaControl
+archivo de entrada de folios a reprocesar /gnx_prod/manto/desa/trabajo/MesaControl/i40_repro.txt
+archivos temporales en /tmp tales como /tmp/consulta_ y /tmp/output_
+
+4 tablas de base de datos consultadas
+tra_env tabla de control de envios de transferencias en informix
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 12 definicion de variables de entorno de base de datos informix y rutas principales en el servidor aix 72
+lineas 14 a 90 validacion del archivo i40_repro txt de mesa de control leyendo los folios de transferencia a reprocesar
+lineas 92 a 280 sentencias sql ejecutadas dinamicamente con dbaccess consultando la tabla tra_env para reconstruir el layout exacto de la interfaz i40
+lineas 282 a 490 generacion de archivos de salida en formato plano delimitado por pipes con el nombre de interfaz correspondiente
+lineas 492 a 638 movimiento de archivos de interfaz generados a las carpetas de paso de oracle copias de respaldo en /respaldo_migracion/reportes_gnx y remocion de temporales en /tmp para liberar espacio en disco
+
+®Carlos Alfonso Ortega Molina®

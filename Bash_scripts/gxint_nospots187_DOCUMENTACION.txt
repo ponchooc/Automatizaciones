@@ -1,0 +1,29 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script realiza la descarga procesamiento e integracion de movimientos de ventas de spots o puntos de venta que no tienen interfaz directa o reportan inconsistencias
+cruza informacion de archivos planos externos y genera reportes en subdirectorios especificos de genesix
+
+2 variables y constantes principales
+ruta_trabajo linea 10 define el directorio de interfaces /syp_interfases/
+archivo_nospots linea 15 define el prefijo de archivo temporal /nospot187_ o /NoSpot187_
+ruta_reportes linea 18 ruta de salida de reportes /respaldo_migracion/reportes_gnx/reportes/int74
+
+3 rutas y archivos clave
+directorio de ejecucion e interfaces /syp_interfases/
+directorio de reportes tecnicos de salida /respaldo_migracion/reportes_gnx/reportes/int74
+archivos temporales /tmp/nospot187_ y /dev/stderr para salida de errores de ejecucion en aix 72
+
+4 tablas de base de datos consultadas
+este script procesa archivos planos de ventas que son cargados a traves de procesos de dbaccess en tablas de control de ventas de genesix de informix tales como i15 y tablas de interfaz de puntos de venta
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 12 cabecera definicion de variables de entorno de base de datos informix y rutas de directorios locales en aix 72
+lineas 14 a 45 validacion de existencia de archivos de entrada con patron NoSpot187 o nospot187 en el directorio /syp_interfases/
+lineas 47 a 115 parseo de archivos usando comandos awk de aix para extraer folios tiendas codigos de barra articulos y cantidades validando consistencia estructural de cada columna
+lineas 117 a 195 generacion de archivos sql de actualizacion ejecutando consultas dbaccess contra la base de datos gen de informix ibm informix dynamic server version 1210fc13
+lineas 197 a 275 logica de actualizacion de precios y costos de productos que no tuvieron registro inicial de spot en las tablas de inventario de genesix
+lineas 277 a 342 generacion del reporte final de ejecucion en la ruta /respaldo_migracion/reportes_gnx/reportes/int74 borrado de temporales y notificacion por bitacora de consola
+
+®Carlos Alfonso Ortega Molina®

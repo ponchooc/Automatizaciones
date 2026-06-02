@@ -1,0 +1,35 @@
+®Carlos Alfonso Ortega Molina®
+
+
+1 proposito general
+este script realiza el reprocesamiento y validacion de archivos de ventas y devoluciones rdds que fallaron en la integracion o transmision inicial hacia oracle cloud
+extrae informacion de la base de datos informix genesix genera archivos planos formateados y ejecuta programas en  genero 4gl para reinyectar los movimientos
+
+2 variables y constantes principales
+fechas_rdds lineas 30 a 35 definen los rangos de procesamiento rdds
+lista_rdds linea 42 archivo de texto con la lista de rdds a procesar /rdds_lista.txt
+base_datos linea 15 define la base de datos informix gen utilizada para dbaccess
+rdd_cab_temp linea 50 ruta temporal del archivo de cabeceras rdd rdd_cab_
+
+3 rutas y archivos clave
+rutas de integraciones /E/software/desarrollo/Integraciones/Lectura/int49 y /E/software/integraciones/Lectura/int49
+ruta de programas 4gl /gnx_prod/sears/sql/ora_integra/ora_vtas_fixed_49_23_51_definitivo_forza.4go
+ruta de accesos de genesix /gnx_prod/manto/genesix/trabajo/sears/.ace/i68
+archivos temporales /tmp/i15_validacion_ /tmp/ora_integra_ /tmp/rdd_cab_
+
+4 tablas de base de datos consultadas y modificadas
+rdd_cab tabla de cabecera de rdds en informix
+i15 tabla de ventas detalladas de genesix
+ora_integra_envio tabla de control de envios a oracle de interfaces de ventas
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 20 configuracion de variables de entorno de base de datos informix variables de path y conexion dbaccess para aix 72
+lineas 22 a 85 lectura interactiva de parametros de fechas y procesamiento de archivos de entrada desde la lista rdds_lista txt
+lineas 87 a 220 consultas sql ejecutadas dinamicamente con dbaccess para extraer ventas detalladas de la tabla i15 y de la cabecera rdd_cab cruzandolas por fecha tienda de origen y transaccion
+lineas 222 a 345 validacion de consistencia numerica de montos totales de piezas y transacciones comparando los totales de genesix contra los registros en ora_integra_envio
+lineas 347 a 480 ejecucion automatica del programa en genero 4gl ora_vtas_fixed_49_23_51_definitivo_forza 4go para reparar las inconsistencias encontradas en la base de datos y marcar los rdds como listos para reenvio
+lineas 482 a 590 generacion de reportes detallados en archivos planos formateados con pipes en /tmp/i15_validacion_
+lineas 592 a 684 impresion de bitacora de resultados en pantalla limpieza de archivos temporales generados y terminacion segura del script con codigo de retorno adecuado
+
+®Carlos Alfonso Ortega Molina®

@@ -1,0 +1,32 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script realiza el procesamiento diario y la validacion de archivos generados por la conciliacion automatica
+recolecta los archivos diarios de salida los comprime y los envia via correo electronico a los destinatarios especificados utilizando el protocolo sendmail mime con un formato de reporte consolidado
+
+2 variables y constantes principales
+destinatarios linea 15 define el archivo que contiene la lista de correos no_borrar_destinatarios txt
+mail_temp linea 17 ruta del archivo temporal de correo generado
+fecha linea 21 obtiene la fecha del dia en formato ddmmyyyy para nombrar los adjuntos y reportes
+ruta_archi linea 25 ruta del directorio de archivos diarios de oracle en genesix
+
+3 rutas y archivos clave
+directorio de origen /gnx_prod/manto/desa/trabajo/sears/ORACLE/archi_diarios
+archivo de configuracion de correos /gnx_prod/manto/desa/trabajo/sears/ORACLE/NO_BORRAR_destinatarios.txt
+archivos temporales /tmp/mail_temp_ y /tmp/proceso_diario_
+archivos de salida generados archivos_conciliacion_ddmmyyyy zip
+
+4 tablas de base de datos consultadas
+este script realiza operaciones de sistema de archivos compresion y envio de correo por lo que no realiza consultas directas a tablas de la base de datos informix pero sirve como validador de los resultados arrojados por las consultas de base de datos de los otros procesos conciliadores de genesix
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 10 definicion de variables iniciales comentarios del autor y configuracion de rutas de ejecucion de aix 72
+lineas 12 a 26 definicion de rutas para destinatarios archivos de salida temporales fecha actual dia de ejecucion y definicion de la ruta_archi
+lineas 28 a 45 validacion de existencia de archivos diarios en el directorio origen si no existen archivos se cancela el envio de correo para evitar enviar reportes vacios
+lineas 47 a 72 empaquetado y compresion de los archivos diarios encontrados usando zip de manera silenciosa guardando el archivo en /tmp con el nombre archivos_conciliacion_ddmmyyyy zip
+lineas 74 a 122 funcion de generacion de cuerpo de correo html dinamico que se inserta en mail_temp describiendo los archivos procesados peso en bytes y hora de ejecucion del proceso
+lineas 124 a 155 construccion de las cabeceras mime para correo electronico multipart/mixed permitiendo adjuntar de forma segura el archivo zip de validacion para el usuario felipe y demas administradores
+lineas 157 a 170 envio del archivo mime construido a traves de sendmail t leyendo el archivo temporal mail_temp y remocion de archivos temporales mediante rm f para limpieza de disco en aix
+
+®Carlos Alfonso Ortega Molina®

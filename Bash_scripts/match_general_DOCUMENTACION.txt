@@ -1,0 +1,36 @@
+®Carlos Alfonso Ortega Molina®
+
+
+
+1 proposito general
+este script realiza la conciliacion de transacciones y ventas generales cruzando informacion entre el sistema de facturacion scanntech y los registros locales de genesix y wms
+calcula diferencias de montos piezas y folios para detectar perdidas o descuadres de informacion en tiendas
+
+2 variables y constantes principales
+fecha_proceso linea 18 almacena la fecha de conciliacion en formato yyyymmdd
+ruta_wms linea 22 define el directorio de interfaces wms /respaldo_migracion/reportes_gnx/reportes/WMS
+total_scanntech total_genesix total_wms arreglos que guardan montos consolidados por tienda
+
+3 rutas y archivos clave
+directorio de interfaces de datos /respaldo_migracion/reportes_gnx/reportes/WMS
+archivos de entrada conteniendo reportes diarios de scanntech y genesix
+archivos de log de conciliacion y resultados generales
+
+4 tablas de base de datos consultadas y modificadas
+dts_scn_gnx tabla de ventas scanntech contra genesix
+dts_scn_wms tabla de ventas scanntech contra wms
+dts_scn_lga tabla de control general local
+edc_cab cabecera de documentos de venta genesix
+scn_mundo_wms tabla de datos consolidados de transacciones wms
+dblga tabla de control de tiendas locales
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 20 definicion de variables de base de datos informix y configuracion de rutas de ejecucion de aix 72
+lineas 22 a 90 carga de parametros de fecha inicial y final validando consistencia numerica de los dias ingresados
+lineas 92 a 180 creacion dinamica de scripts sql para ejecutar de forma masiva via dbaccess obteniendo totales de transacciones agrupados por tienda y dia de la tabla scn_mundo_wms y edc_cab
+lineas 182 a 290 procesos de insercion de datos crudos de archivos planos de scanntech en las tablas de paso dts_scn_gnx dts_scn_wms y dts_scn_lga utilizando dbload de informix
+lineas 292 a 420 ejecucion de sentencias sql complejas de cruzamiento de datos calculando variaciones porcentuales y absolutas entre genesix wms y scanntech agrupando por tienda
+lineas 422 a 560 procesamiento de diferencias a nivel de articulo sku identificando faltantes en transacciones especificas y guardando los resultados detallados en archivos delimitados por pipes
+lineas 562 a 641 construccion del informe resumido por pantalla eliminacion de tablas temporales de informix para liberar espacio de log transaccional en ibm informix dynamic server version 1210fc13 y finalizacion del script
+
+®Carlos Alfonso Ortega Molina®

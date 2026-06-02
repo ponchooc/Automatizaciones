@@ -1,0 +1,25 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script realiza la validacion de integridad de articulos de catalogo y precios aplicados a las transacciones de ventas diarias de genesix
+detecta discrepancias o variaciones fuera de los rangos autorizados y genera reportes planos estructurados
+
+2 variables y constantes principales
+ruta_integridad linea 12 define la ruta del proceso /gnx_prod/manto/desa/trabajo/sears/mangel/integridad
+archivo_salida linea 15 contiene el reporte generado de inconsistencias
+
+3 rutas y archivos clave
+ruta del modulo de integridad de genesix /gnx_prod/manto/desa/trabajo/sears/mangel/integridad
+archivos temporales de consultas sql en el directorio local de aix 72
+
+4 tablas de base de datos consultadas
+tarifas tabla de control de precios de venta y ofertas
+tmp_int_art tabla temporal de interfaz e integridad de articulos
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 12 variables de entorno de base de datos informix y rutas de directorios de genesix en aix 72
+lineas 14 a 150 procesamiento masivo de codigos de articulos cruzando con tarifas vigentes para identificar inconsistencias de precios aplicados en tiendas
+lineas 152 a 320 consultas sql ejecutadas de manera estructurada con dbaccess a la tabla tmp_int_art para validar altas de sku y cambios en catalogo de genesix
+lineas 322 a 527 formateo de la salida de datos eliminando registros redundantes en tablas temporales de informix ibm informix dynamic server version 1210fc13 y generacion del archivo de reporte plano para revision del administrador felipe
+
+®Carlos Alfonso Ortega Molina®

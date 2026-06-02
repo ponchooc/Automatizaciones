@@ -1,0 +1,27 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script realiza la liberacion de pedidos o relizes de forma automatica en base de datos informix
+actualiza estados de documentos y procesa colas de entrega de mercancia para la integracion con oracle cloud wms
+
+2 variables y constantes principales
+ruta_carlos linea 12 define la ruta de trabajo del autor /gnx_prod/manto/desa/trabajo/sears/carlos_ortega
+archivo_relices linea 15 contiene los folios de relizes a procesar /relices.txt
+archivo_log linea 18 log de ejecucion /relices_dbaccess.log.
+
+3 rutas y archivos clave
+ruta de trabajo /gnx_prod/manto/desa/trabajo/sears/carlos_ortega
+archivos de entrada y salida /relices.txt /relices_procesado.txt /relices_sql. /relices_dbaccess.log.
+
+4 tablas de base de datos consultadas y modificadas
+edc_cab cabecera de documentos de venta y distribucion
+tmp_relices tabla temporal de procesamiento de folios de liberacion
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 11 definicion de variables de base de datos informix y de rutas de ejecucion de aix 72
+lineas 12 a 25 validacion de la existencia del archivo de entrada relices txt en la ruta especificada
+lineas 27 a 50 creacion de sentencias sql dinamicas para insertar los folios leidos del archivo en la tabla temporal tmp_relices en informix
+lineas 52 a 65 ejecucion de procesos dbaccess aplicando sentencias de update en la tabla edc_cab para cambiar el estado de los pedidos liberados de forma masiva
+lineas 66 a 77 registro de logs en relices_dbaccess log actualizacion de folios procesados en relices_procesado txt y salida limpia de ejecucion de aix
+
+®Carlos Alfonso Ortega Molina®

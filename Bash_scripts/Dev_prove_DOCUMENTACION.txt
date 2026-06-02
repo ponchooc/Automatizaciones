@@ -1,0 +1,43 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script sirve para la administracion de las devoluciones al proveedor y conciliacion de bultos
+permite capturar numeros de devoluciones de forma interactiva en pantalla consultar informacion detallada en base de datos informix generar archivos de carga para integraciones eliminar registros huerfanos en tablas de paso y dar de baja bultos especificos
+
+2 variables y constantes principales
+archivo_devoluciones linea 16 almacena la ruta temporal de devoluciones capturadas por el usuario
+archivo_bultos linea 17 almacena la ruta temporal de bultos capturados por el usuario
+archivo_load linea 18 almacena el archivo para carga de datos temporales
+ruta_reportes linea 19 define la ruta principal de reportes de genesix /respaldo_migracion/reportes_gnx
+ruta_felipe linea 20 define la ruta especifica del usuario felipe
+
+3 rutas y archivos clave
+ruta principal de trabajo /respaldo_migracion/reportes_gnx/felipe
+archivos temporales /tmp/devs_ /tmp/bultos_ /tmp/load_devs_ que se limpian automaticamente al terminar o abortar el script
+archivos de borrado en base de datos /tmp/delete_corp_ y /tmp/delete_dorp_
+archivos de datos de oracle tales como ora_devol que se descomprimen con gunzip
+
+4 tablas de base de datos consultadas y modificadas
+devcab cabecera de devoluciones en informix
+ora_dev_del tabla de paso o control de devoluciones oracle eliminadas
+ora_int_corp tabla de interfaz corporativa de devoluciones
+ora_int_dorp tabla de interfaz detalle de devoluciones
+archivo_update tabla temporal o archivo de actualizacion de datos
+resultado tabla temporal de salida de queries
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 14 definicion de colores ansi para salida interactiva de consola en terminales de aix y definicion de variables de configuracion
+lineas 16 a 22 definicion de archivos temporales rutas fijas y descompresion de archivos dev en felipe
+lineas 25 a 30 funcion limpiar_archivos_temporales que remueve los archivos creados en /tmp con rm f
+lineas 33 a 60 funciones de formato visual centrar_texto mostrar_exito mostrar_error mostrar_info para la interfaz de consola
+lineas 61 a 102 funcion capturar_devoluciones que lee de forma interactiva numeros de devoluciones validados que sean enteros usando grep y los escribe en un archivo
+lineas 104 a 147 funcion capturar_bultos que pide al usuario ingresar codigos de bultos uno por linea validando formato numerico
+lineas 149 a 201 funcion consultar_devoluciones que toma el archivo de devoluciones escribe consultas sql cruzando con devcab y muestra los bultos articulos piezas y fecha correspondientes
+lineas 203 a 248 funcion generar_archivo_carga que procesa el archivo de devoluciones capturadas para generar un layout compatible con la interfaz de carga de oracle cloud
+lineas 250 a 333 funcion eliminar_devoluciones_oracle que borra fisicamente registros de las tablas de paso ora_int_corp y ora_int_dorp en la base de datos de informix ibm informix dynamic server version 1210fc13 para evitar duplicaciones o errores de procesamiento
+lineas 335 a 424 funcion dar_baja_bultos que realiza inserts y updates en las tablas de paso y de control de bultos para darlos de baja de manera logica o fisica
+lineas 426 a 513 funcion menu_principal que muestra la interfaz visual con opciones interactivas numeradas del uno al siete y captura la decision del usuario llamando a las funciones respectivas
+lineas 515 a 537 control de señales usando trap para limpiar temporales en caso de interrupcion forzada ctrl c o salida normal y llamada inicial al menu_principal
+
+®Carlos Alfonso Ortega Molina®

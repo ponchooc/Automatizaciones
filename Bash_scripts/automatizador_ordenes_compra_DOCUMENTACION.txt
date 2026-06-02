@@ -1,0 +1,31 @@
+®Carlos Alfonso Ortega Molina®
+
+1 proposito general
+este script realiza la automatizacion completa del flujo de procesamiento de archivos de ordenes de compra oc y asn de proveedores provenientes de oracle cloud
+detecta la presencia de archivos nuevos en los directorios de paso los procesa aplicando reglas de negocio de genesix y genera los reportes correspondientes
+
+2 variables y constantes principales
+ruta_oc linea 10 define la ruta de recepcion de ordenes de compra /SE_OC
+ruta_asn linea 11 define la ruta de recepcion de asn de proveedor /SE_ASN_PO
+ruta_sql linea 14 define el directorio de scripts de integracion /gnx_prod/sears/sql/ora_integra/
+ruta_reportes linea 17 ruta para almacenamiento de reportes consolidados /respaldo_migracion/reportes_gnx
+
+3 rutas y archivos clave
+directorios de entrada de archivos planos /SE_OC y /SE_ASN_PO
+directorio de scripts y programas executables /gnx_prod/sears/sql/ora_integra/
+directorio de salida de reportes /respaldo_migracion/reportes_gnx
+archivo de errores y log de base de datos /respaldo_migracion/reportes_gnx/i04.txt
+
+4 tablas de base de datos consultadas
+este script actua como orquestador ejecutando programas binarios y scripts compilados que insertan de manera directa en las tablas de genesix de ordenes de compra e inventarios tales como ord_cab ord_det asn_cab asn_det en la base de datos de informix
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 9 declaracion de cabecera comentarios de propiedad del autor y definicion de variables globales de entorno en aix
+lineas 10 a 25 inicializacion de variables de rutas para interfaces de entrada y almacenamiento de reportes historicos
+lineas 27 a 80 ciclo de monitoreo en segundo plano o ejecucion controlada que revisa la existencia de nuevos archivos planos con extension dat o txt en /SE_OC
+lineas 82 a 135 ejecucion automatizada de comandos dbaccess llamando a scripts sql especificos ubicados en /gnx_prod/sears/sql/ora_integra/ para procesar los datos insertarlos en las tablas correspondientes y validar la carga
+lineas 137 a 195 logica de procesamiento de archivos asn de proveedores ubicados en /SE_ASN_PO ejecutando la validacion de bultos piezas y sku
+lineas 197 a 243 generacion del reporte consolidado i04 txt en la ruta /respaldo_migracion/reportes_gnx moviendo los archivos originales ya procesados hacia carpetas de respaldo historicas para mantener limpios los directorios de paso
+
+®Carlos Alfonso Ortega Molina®

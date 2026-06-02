@@ -1,0 +1,49 @@
+®Carlos Alfonso Ortega Molina®
+
+
+1 proposito general
+este script realiza la conciliacion de cifras de inventario y movimientos entre el sistema genesix y wms oracle cloud para transferencias de stock transferencias predistribuidas y bultos de transferencia bt
+genera reportes en formato html y archivos de detalle delimitados por pipes comprimidos en un archivo tar gzipped que se envia por correo electronico usando sendmail en aix 72
+
+2 variables y constantes principales
+debug_sql linea 11 muestra el sql generado en pantalla si se configura en uno
+fecha_oc fecha_bt fecha_tr lineas 128 a 130 definen el rango de fechas para las consultas sql
+tras_genesix tras_wms predis_genesix predis_wms bt_genesix bt_wms arreglos asociativos que almacenan los totales de piezas recuperados para cada mes
+destinatarios linea 306 lee las direcciones de correo del archivo no_borrar_destinatarios2 txt
+
+3 rutas y archivos clave
+ruta de ejecucion principal /u/genesix
+archivo de destinatarios no_borrar_destinatarios2 txt
+archivos temporales creados en /tmp tales como /tmp/mail_temp_ o archivos de consultas html de salida
+archivos de detalle generados con formato de pipes conc_det_trans_ stock_ddmmyyyy_hhmm txt conc_det_bultos_bt_ddmmyyyy_hhmm txt conc_det_predis_ddmmyyyy_hhmm txt
+archivo comprimido final enviado por correo conc_det_todos_ddmmyyyy_hhmm tar gz
+
+4 tablas de base de datos consultadas
+tra_cab tabla de cabecera de transferencias en informix
+tra_det tabla de detalle de transferencias en informix
+ora_tr2_emb tabla de embarques de transferencias en oracle cloud/genesix paso
+ora_bt2_emb tabla de bultos de transferencias paso
+ora_oc2_emb tabla de ordenes de compra / transferencias predistribuidas paso
+tra_env tabla de envios de transferencias en informix
+genesix_bt y wms_bt tablas temporales dinamicas creadas en informix durante la ejecucion del query
+genesix_simple y wms_simple tablas temporales de paso para sumas sencillas
+
+
+5 analisis detallado del codigo y referencias de lineas
+lineas 1 a 8 definicion del interprete bash y comentarios iniciales
+lineas 18 a 58 definicion de funciones basicas de validacion de fechas validar_fecha to_yyyymmdd nombre_mes extraer_valor y ayer_ddmmaaaa que usa perl para aix
+lineas 64 a 110 funcion construir_label_fecha que procesa los parametros de entrada y define el rango de busqueda dinamico por mes
+lineas 116 a 130 inicializacion de variables de fecha y llamada a la construccion de etiquetas de busqueda
+lineas 133 a 135 definicion de arreglos asociativos para guardar resultados de las tres categorias
+lineas 141 a 265 funcion ejecutar_query que escribe dinamicamente archivos sql temporales ejecuta dbaccess contra la base de datos gen extrae los totales con la funcion extraer_valor y limpia los archivos temporales creados
+lineas 267 a 303 ciclo que recorre los meses del rango ejecuta las consultas y calcula las diferencias usando bc para calculo de punto flotante en aix
+lineas 306 a 306 lectura de destinatarios desde el archivo de configuracion no_borrar_destinatarios2 txt
+lineas 313 a 316 extraccion de dia mes hora y minuto para nombrar los archivos de detalle del reporte tecnico
+lineas 319 a 368 generacion de detalle de transferencias de stock ejecutando consulta sql cruzando ora_tr2_emb con tra_cab y tra_det en informix sacando diferencias
+lineas 371 a 421 generacion de detalle de bultos de transferencia bt cruzando ora_bt2_emb con tra_cab y tra_det sacando diferencias de piezas y bultos
+lineas 424 a 484 generacion de detalle de transferencias predistribuidas cruzando ora_oc2_emb con tra_cab tra_det y tra_env
+lineas 491 a 493 compresion de los tres archivos de detalle en un archivo tar gz usando comandos nativos tar y gzip de aix 72
+lineas 499 a 560 funcion generar_html que construye la estructura del reporte por correo con tablas alineadas y estilos css basicos
+lineas 566 a 585 construccion del correo mime multipart con el reporte html y el archivo tar gz adjunto enviado via sendmail de aix 72
+
+®Carlos Alfonso Ortega Molina®
